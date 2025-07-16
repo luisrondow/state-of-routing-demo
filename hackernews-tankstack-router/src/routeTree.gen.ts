@@ -14,7 +14,12 @@ import { Route as StoriesTopRouteImport } from './routes/stories/top'
 import { Route as StoriesStaticRouteImport } from './routes/stories/static'
 import { Route as StoriesNewRouteImport } from './routes/stories/new'
 import { Route as StoriesBestRouteImport } from './routes/stories/best'
+import { Route as NewsIdRouteImport } from './routes/news.$id'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
+import { Route as NewsIdIndexRouteImport } from './routes/news.$id.index'
+import { Route as NewsIdShareRouteImport } from './routes/news.$id.share'
+import { Route as NewsIdCommentsRouteImport } from './routes/news.$id.comments'
+import { Route as NewsIdCommentsCommentIdRouteImport } from './routes/news.$id.comments.$commentId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -41,19 +46,49 @@ const StoriesBestRoute = StoriesBestRouteImport.update({
   path: '/stories/best',
   getParentRoute: () => rootRouteImport,
 } as any)
+const NewsIdRoute = NewsIdRouteImport.update({
+  id: '/news/$id',
+  path: '/news/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthLoginRoute = AuthLoginRouteImport.update({
   id: '/auth/login',
   path: '/auth/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const NewsIdIndexRoute = NewsIdIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => NewsIdRoute,
+} as any)
+const NewsIdShareRoute = NewsIdShareRouteImport.update({
+  id: '/share',
+  path: '/share',
+  getParentRoute: () => NewsIdRoute,
+} as any)
+const NewsIdCommentsRoute = NewsIdCommentsRouteImport.update({
+  id: '/comments',
+  path: '/comments',
+  getParentRoute: () => NewsIdRoute,
+} as any)
+const NewsIdCommentsCommentIdRoute = NewsIdCommentsCommentIdRouteImport.update({
+  id: '/$commentId',
+  path: '/$commentId',
+  getParentRoute: () => NewsIdCommentsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth/login': typeof AuthLoginRoute
+  '/news/$id': typeof NewsIdRouteWithChildren
   '/stories/best': typeof StoriesBestRoute
   '/stories/new': typeof StoriesNewRoute
   '/stories/static': typeof StoriesStaticRoute
   '/stories/top': typeof StoriesTopRoute
+  '/news/$id/comments': typeof NewsIdCommentsRouteWithChildren
+  '/news/$id/share': typeof NewsIdShareRoute
+  '/news/$id/': typeof NewsIdIndexRoute
+  '/news/$id/comments/$commentId': typeof NewsIdCommentsCommentIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -62,25 +97,39 @@ export interface FileRoutesByTo {
   '/stories/new': typeof StoriesNewRoute
   '/stories/static': typeof StoriesStaticRoute
   '/stories/top': typeof StoriesTopRoute
+  '/news/$id/comments': typeof NewsIdCommentsRouteWithChildren
+  '/news/$id/share': typeof NewsIdShareRoute
+  '/news/$id': typeof NewsIdIndexRoute
+  '/news/$id/comments/$commentId': typeof NewsIdCommentsCommentIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/auth/login': typeof AuthLoginRoute
+  '/news/$id': typeof NewsIdRouteWithChildren
   '/stories/best': typeof StoriesBestRoute
   '/stories/new': typeof StoriesNewRoute
   '/stories/static': typeof StoriesStaticRoute
   '/stories/top': typeof StoriesTopRoute
+  '/news/$id/comments': typeof NewsIdCommentsRouteWithChildren
+  '/news/$id/share': typeof NewsIdShareRoute
+  '/news/$id/': typeof NewsIdIndexRoute
+  '/news/$id/comments/$commentId': typeof NewsIdCommentsCommentIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/auth/login'
+    | '/news/$id'
     | '/stories/best'
     | '/stories/new'
     | '/stories/static'
     | '/stories/top'
+    | '/news/$id/comments'
+    | '/news/$id/share'
+    | '/news/$id/'
+    | '/news/$id/comments/$commentId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -89,19 +138,29 @@ export interface FileRouteTypes {
     | '/stories/new'
     | '/stories/static'
     | '/stories/top'
+    | '/news/$id/comments'
+    | '/news/$id/share'
+    | '/news/$id'
+    | '/news/$id/comments/$commentId'
   id:
     | '__root__'
     | '/'
     | '/auth/login'
+    | '/news/$id'
     | '/stories/best'
     | '/stories/new'
     | '/stories/static'
     | '/stories/top'
+    | '/news/$id/comments'
+    | '/news/$id/share'
+    | '/news/$id/'
+    | '/news/$id/comments/$commentId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthLoginRoute: typeof AuthLoginRoute
+  NewsIdRoute: typeof NewsIdRouteWithChildren
   StoriesBestRoute: typeof StoriesBestRoute
   StoriesNewRoute: typeof StoriesNewRoute
   StoriesStaticRoute: typeof StoriesStaticRoute
@@ -145,6 +204,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StoriesBestRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/news/$id': {
+      id: '/news/$id'
+      path: '/news/$id'
+      fullPath: '/news/$id'
+      preLoaderRoute: typeof NewsIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth/login': {
       id: '/auth/login'
       path: '/auth/login'
@@ -152,12 +218,68 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/news/$id/': {
+      id: '/news/$id/'
+      path: '/'
+      fullPath: '/news/$id/'
+      preLoaderRoute: typeof NewsIdIndexRouteImport
+      parentRoute: typeof NewsIdRoute
+    }
+    '/news/$id/share': {
+      id: '/news/$id/share'
+      path: '/share'
+      fullPath: '/news/$id/share'
+      preLoaderRoute: typeof NewsIdShareRouteImport
+      parentRoute: typeof NewsIdRoute
+    }
+    '/news/$id/comments': {
+      id: '/news/$id/comments'
+      path: '/comments'
+      fullPath: '/news/$id/comments'
+      preLoaderRoute: typeof NewsIdCommentsRouteImport
+      parentRoute: typeof NewsIdRoute
+    }
+    '/news/$id/comments/$commentId': {
+      id: '/news/$id/comments/$commentId'
+      path: '/$commentId'
+      fullPath: '/news/$id/comments/$commentId'
+      preLoaderRoute: typeof NewsIdCommentsCommentIdRouteImport
+      parentRoute: typeof NewsIdCommentsRoute
+    }
   }
 }
+
+interface NewsIdCommentsRouteChildren {
+  NewsIdCommentsCommentIdRoute: typeof NewsIdCommentsCommentIdRoute
+}
+
+const NewsIdCommentsRouteChildren: NewsIdCommentsRouteChildren = {
+  NewsIdCommentsCommentIdRoute: NewsIdCommentsCommentIdRoute,
+}
+
+const NewsIdCommentsRouteWithChildren = NewsIdCommentsRoute._addFileChildren(
+  NewsIdCommentsRouteChildren,
+)
+
+interface NewsIdRouteChildren {
+  NewsIdCommentsRoute: typeof NewsIdCommentsRouteWithChildren
+  NewsIdShareRoute: typeof NewsIdShareRoute
+  NewsIdIndexRoute: typeof NewsIdIndexRoute
+}
+
+const NewsIdRouteChildren: NewsIdRouteChildren = {
+  NewsIdCommentsRoute: NewsIdCommentsRouteWithChildren,
+  NewsIdShareRoute: NewsIdShareRoute,
+  NewsIdIndexRoute: NewsIdIndexRoute,
+}
+
+const NewsIdRouteWithChildren =
+  NewsIdRoute._addFileChildren(NewsIdRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthLoginRoute: AuthLoginRoute,
+  NewsIdRoute: NewsIdRouteWithChildren,
   StoriesBestRoute: StoriesBestRoute,
   StoriesNewRoute: StoriesNewRoute,
   StoriesStaticRoute: StoriesStaticRoute,

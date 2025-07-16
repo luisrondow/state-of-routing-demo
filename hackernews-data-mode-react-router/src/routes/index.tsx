@@ -45,7 +45,6 @@ const router = createBrowserRouter([
         },
       },
 
-      // Stories prefix route - groups all story-related routes under /stories
       {
         path: "/stories",
         children: [
@@ -99,14 +98,6 @@ const router = createBrowserRouter([
             Component: StaticStories,
           },
         ],
-      },
-
-      // Legacy redirects for old story URLs
-      {
-        path: "/stories/static",
-        loader: async () => {
-          throw redirect("/stories/static");
-        },
       },
 
       // Auth prefix route - groups authentication-related routes under /auth

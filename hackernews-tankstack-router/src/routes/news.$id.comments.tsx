@@ -1,52 +1,77 @@
-import type { Route } from "./+types/comments";
-import { useLoaderData, useSearchParams, Link, useParams } from "react-router";
-import { Card, CardContent, CardHeader } from "~/components/ui/card";
-import { Badge } from "~/components/ui/badge";
-import { Button } from "~/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
-import { ArrowUp, MessageSquare, Clock, User, Filter, SortAsc } from "lucide-react";
-import { getComments, type Comment } from "~/lib/mock-data";
-import { formatTimeAgo } from "~/lib/utils";
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { ArrowUp, MessageSquare, Clock, User, Filter, SortAsc } from 'lucide-react'
+import { getComments, type Comment } from '@/lib/mock-data'
+import { formatTimeAgo } from '@/lib/utils'
 
-export function meta({}: Route.MetaArgs) {
-  return [
-    { title: "Comments" },
-  ];
+// Search params validation schema
+interface CommentsSearchParams {
+  sort?: 'best' | 'newest' | 'oldest'
+  filter?: 'all' | 'top' | 'recent'
+  page?: number
 }
 
-export async function loader({ params, request }: Route.LoaderArgs) {
-  const url = new URL(request.url);
-  const sortBy = url.searchParams.get("sort") || "best";
-  const filter = url.searchParams.get("filter") || "all";
-  const page = parseInt(url.searchParams.get("page") || "1");
-
-  const allComments = getComments(params.id, sortBy);
-
-  let filteredComments = allComments;
-  if (filter === "top") {
-    filteredComments = allComments.filter(c => c.score >= 10);
-  } else if (filter === "recent") {
-    const oneDayAgo = Date.now() / 1000 - 86400;
-    filteredComments = allComments.filter(c => c.time > oneDayAgo);
-  }
-
-  const perPage = 5;
-  const start = (page - 1) * perPage;
-  const paginatedComments = filteredComments.slice(start, start + perPage);
-
-  return {
-    comments: paginatedComments,
-    totalComments: filteredComments.length,
-    currentPage: page,
-    totalPages: Math.ceil(filteredComments.length / perPage),
-    sortBy,
-    filter
-  };
+interface CommentsRouteParams {
+  id: string
 }
+
+interface CommentsLoaderData {
+  comments: Comment[]
+  totalComments: number
+  currentPage: number
+  totalPages: number
+  sortBy: string
+  filter: string
+}
+
+export const Route = createFileRoute('/news/$id/comments')({
+  validateSearch: (search: Record<string, unknown>): CommentsSearchParams => ({
+    sort: (search.sort as 'best' | 'newest' | 'oldest') || 'best',
+    filter: (search.filter as 'all' | 'top' | 'recent') || 'all',
+    page: Number(search.page) || 1,
+  }),
+  loaderDeps: ({ search: { sort, filter, page } }) => ({ sort, filter, page }),
+  loader: async (ctx) => {
+    const { params, deps } = ctx
+    const search = deps
+    const sortBy = search.sort || 'best'
+    const filter = search.filter || 'all'
+    const page = search.page || 1
+
+    const allComments = getComments(params.id, sortBy)
+
+    // Apply filters
+    let filteredComments = allComments
+    if (filter === 'top') {
+      filteredComments = allComments.filter(c => c.score >= 10)
+    } else if (filter === 'recent') {
+      const oneDayAgo = Date.now() / 1000 - 86400
+      filteredComments = allComments.filter(c => c.time > oneDayAgo)
+    }
+
+    // Pagination
+    const perPage = 5
+    const start = (page - 1) * perPage
+    const paginatedComments = filteredComments.slice(start, start + perPage)
+
+    return {
+      comments: paginatedComments,
+      totalComments: filteredComments.length,
+      currentPage: page,
+      totalPages: Math.ceil(filteredComments.length / perPage),
+      sortBy,
+      filter
+    }
+  },
+  component: NewsComments,
+})
 
 function CommentCard({ comment }: { comment: Comment }) {
-  const params = useParams();
-  const indentLevel = Math.min(comment.depth, 4);
+  const { id } = Route.useParams() as CommentsRouteParams
+  const indentLevel = Math.min(comment.depth, 4) // Max 4 levels of nesting
 
   return (
     <div
@@ -75,7 +100,8 @@ function CommentCard({ comment }: { comment: Comment }) {
                 </Badge>
               )}
               <Link
-                to={`/news/${params.id}/comments/${comment.id}`}
+                to="/news/$id/comments/$commentId"
+                params={{ id, commentId: comment.id }}
                 className="text-xs text-blue-600 hover:underline"
               >
                 Thread
@@ -94,31 +120,42 @@ function CommentCard({ comment }: { comment: Comment }) {
         </CardContent>
       </Card>
     </div>
-  );
+  )
 }
 
-export default function NewsComments() {
-  const { comments, totalComments, currentPage, totalPages, sortBy, filter } = useLoaderData<typeof loader>();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const params = useParams();
+function NewsComments() {
+  const { comments, totalComments, currentPage, totalPages, sortBy, filter } = Route.useLoaderData() as CommentsLoaderData
+  const search = Route.useSearch() as CommentsSearchParams
+  const { id } = Route.useParams() as CommentsRouteParams
+  const navigate = useNavigate()
 
-  const updateSearchParams = (key: string, value: string) => {
-    const newParams = new URLSearchParams(searchParams);
-    if (value === "best" && key === "sort") {
-      newParams.delete("sort");
-    } else if (value === "all" && key === "filter") {
-      newParams.delete("filter");
+  const updateSearchParams = (key: keyof CommentsSearchParams, value: string) => {
+    const newSearch = { ...search } as CommentsSearchParams
+
+    if (value === 'best' && key === 'sort') {
+      delete newSearch.sort
+    } else if (value === 'all' && key === 'filter') {
+      delete newSearch.filter
     } else {
-      newParams.set(key, value);
+      switch (key) {
+        case 'sort':
+          newSearch.sort = value as 'best' | 'newest' | 'oldest'
+          break
+        case 'filter':
+          newSearch.filter = value as 'all' | 'top' | 'recent'
+      }
     }
 
     // Reset page when changing sort/filter
-    if (key !== "page") {
-      newParams.delete("page");
+    if (key !== 'page') {
+      delete newSearch.page
     }
 
-    setSearchParams(newParams);
-  };
+    navigate({
+      to: `/news/${id}/comments`,
+      search: newSearch,
+    })
+  }
 
   return (
     <div className="space-y-6">
@@ -132,7 +169,7 @@ export default function NewsComments() {
           <div className="flex items-center justify-between">
             <h3 className="font-semibold">🔧 Query Parameters in Action</h3>
             <Badge variant="outline" className="font-mono text-xs">
-              {searchParams.toString() || "No query params"}
+              {new URLSearchParams(search as any).toString() || 'No query params'}
             </Badge>
           </div>
         </CardHeader>
@@ -145,7 +182,7 @@ export default function NewsComments() {
               </label>
               <Select
                 value={sortBy}
-                onValueChange={(value: string) => updateSearchParams("sort", value)}
+                onValueChange={(value: string) => updateSearchParams('sort', value)}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -165,7 +202,7 @@ export default function NewsComments() {
               </label>
               <Select
                 value={filter}
-                onValueChange={(value: string) => updateSearchParams("filter", value)}
+                onValueChange={(value: string) => updateSearchParams('filter', value)}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -181,7 +218,7 @@ export default function NewsComments() {
             <div>
               <label className="text-sm font-medium mb-2">Current URL</label>
               <div className="text-xs font-mono bg-muted p-2 rounded">
-                /news/{params.id}/comments{searchParams.toString() ? `?${searchParams.toString()}` : ''}
+                /news/{id}/comments{new URLSearchParams(search as any).toString() ? `?${new URLSearchParams(search as any).toString()}` : ''}
               </div>
             </div>
           </div>
@@ -193,7 +230,7 @@ export default function NewsComments() {
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-semibold">
             {totalComments} {totalComments === 1 ? 'Comment' : 'Comments'}
-            {filter !== "all" && <span className="text-muted-foreground"> (filtered)</span>}
+            {filter !== 'all' && <span className="text-muted-foreground"> (filtered)</span>}
           </h3>
           <div className="text-sm text-muted-foreground">
             Page {currentPage} of {totalPages}
@@ -223,7 +260,7 @@ export default function NewsComments() {
             variant="outline"
             size="sm"
             disabled={currentPage === 1}
-            onClick={() => updateSearchParams("page", String(currentPage - 1))}
+            onClick={() => updateSearchParams('page', String(currentPage - 1))}
           >
             Previous
           </Button>
@@ -231,9 +268,9 @@ export default function NewsComments() {
           {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
             <Button
               key={page}
-              variant={page === currentPage ? "default" : "outline"}
+              variant={page === currentPage ? 'default' : 'outline'}
               size="sm"
-              onClick={() => updateSearchParams("page", String(page))}
+              onClick={() => updateSearchParams('page', String(page))}
             >
               {page}
             </Button>
@@ -243,12 +280,12 @@ export default function NewsComments() {
             variant="outline"
             size="sm"
             disabled={currentPage === totalPages}
-            onClick={() => updateSearchParams("page", String(currentPage + 1))}
+            onClick={() => updateSearchParams('page', String(currentPage + 1))}
           >
             Next
           </Button>
         </div>
       )}
     </div>
-  );
+  )
 }
